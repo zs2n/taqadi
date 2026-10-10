@@ -1,0 +1,10 @@
+# أسرار: لا ترفعها أبدًا
+*.keystore
+*.jks
+.dev.vars
+.env
+# ملفات بناء
+node_modules/
+.wrangler/
+*.aab
+*.apk

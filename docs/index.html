@@ -1,0 +1,880 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#24160f">
+<meta name="description" content="لعبة محكمة بين الأخوياء: كل طرف يكتب حجته والقاضي يصدر صك الحكم.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}</style>
+<title>تقاضي الأخوياء</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Aref+Ruqaa:wght@400;700&family=Noto+Naskh+Arabic:wght@400;600;700&family=Readex+Pro:wght@300;400;500;600&display=swap">
+<style>
+/* Layout: a majlis courtroom — walnut hall, the judge raised at the center bench, plaintiffs to the right, defendants to the left; below it the session paper (محضر) and finally the ruling deed (صك). Single committed look. */
+:root{
+  --hall:#24160f; --hall-2:#311f15; --hall-line:#4a3122;
+  --bisht:#4a2c1c; --zari:#d1aa5e; --zari-soft:#d1aa5e33;
+  --paper:#f1e7d3; --paper-2:#e6d8bc; --ink:#2b1d14; --ink-soft:#6b5644;
+  --on-hall:#f3e9d8; --on-hall-soft:#c4ad90;
+  --shmagh:#b3202a;
+  --plaintiff:#2d7a64; --plaintiff-soft:#2d7a6422;
+  --defendant:#a5532f; --defendant-soft:#a5532f22;
+  --seal:#9e1f24;
+  --f-display:"Aref Ruqaa","Noto Naskh Arabic",serif;
+  --f-doc:"Noto Naskh Arabic","Amiri",serif;
+  --f-ui:"Readex Pro","Segoe UI",Tahoma,sans-serif;
+  color-scheme:dark;
+}
+html{background:var(--hall)}
+body{
+  background:var(--hall);
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% 0%, #4a2f1e 0%, transparent 70%),
+    repeating-linear-gradient(90deg, transparent 0 46px, #ffffff05 46px 47px);
+  color:var(--on-hall); font-family:var(--f-ui); font-size:16px; line-height:1.7;
+  padding-inline:16px; padding-block:0 48px; min-height:100%;
+}
+*{box-sizing:border-box}
+.app{max-width:880px; margin-inline:auto; display:flex; flex-direction:column; gap:20px}
+button,input,textarea,select{font:inherit}
+:focus-visible{outline:2px solid var(--zari); outline-offset:2px}
+
+/* Header */
+.brand{display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:4px 16px; padding-block:22px 0}
+.brand h1{font-family:var(--f-display); font-weight:700; font-size:clamp(2rem,6vw,2.9rem); line-height:1.1; margin:0; color:var(--zari); text-wrap:balance}
+.brand p{margin:0; color:var(--on-hall-soft); font-size:.88rem; letter-spacing:.02em}
+
+/* Courtroom scene */
+.court{
+  position:relative; border:1px solid var(--hall-line); border-radius:6px;
+  background:linear-gradient(180deg,#3a2518 0%, #2a1a11 100%);
+  padding:18px 14px 0; overflow:hidden;
+}
+.court::before{ /* zari trim along the top like a bisht edge */
+  content:""; position:absolute; inset:0 0 auto; height:4px;
+  background:repeating-linear-gradient(90deg,var(--zari) 0 10px, #a8853f 10px 14px);
+}
+.scene{display:grid; grid-template-columns:1fr 1.25fr 1fr; align-items:end; gap:8px}
+.side{display:flex; flex-direction:column; align-items:center; gap:6px; padding-bottom:14px; min-width:0; transition:filter .3s}
+.side .label{font-size:.75rem; letter-spacing:.06em; color:var(--on-hall-soft)}
+.side.plaintiff .label b{color:#7fd1b6}
+.side.defendant .label b{color:#f0a37f}
+.figures{display:flex; justify-content:center; min-height:96px}
+.figures svg{width:76px; height:auto; margin-inline:-14px; filter:drop-shadow(0 4px 6px #0006)}
+.names{font-size:.85rem; text-align:center; color:var(--on-hall); max-width:100%; overflow-wrap:anywhere}
+.side.speaking .figures svg{animation:nod 1.6s ease-in-out infinite}
+.side.speaking .label{color:var(--zari)}
+.side.dim{filter:saturate(.5) brightness(.75)}
+@keyframes nod{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+
+.judge-wrap{display:flex; flex-direction:column; align-items:center; position:relative}
+.judge-wrap svg{width:100%; max-width:250px; height:auto; display:block}
+.nameplate{
+  position:relative; z-index:2; margin-top:-18px; margin-bottom:10px;
+  background:var(--paper); color:var(--ink); border:1px solid var(--zari);
+  padding:2px 14px; font-family:var(--f-display); font-size:1.05rem; white-space:nowrap;
+  box-shadow:0 3px 0 #0005;
+}
+.bubble{
+  position:absolute; top:0; inset-inline-start:50%; transform:translate(50%,-4px);
+  background:var(--paper); color:var(--ink); font-size:.82rem; padding:4px 12px; border-radius:14px;
+  white-space:nowrap; box-shadow:0 4px 10px #0006; opacity:0; transition:opacity .3s; pointer-events:none;
+}
+.thinking .bubble{opacity:1}
+.thinking #j-eyes{animation:blink 2.4s infinite}
+@keyframes blink{0%,92%,100%{transform:scaleY(1)}95%{transform:scaleY(.1)}}
+#j-eyes{transform-origin:130px 103px}
+
+@media (max-width:620px){
+  .scene{grid-template-columns:1fr 1fr; grid-template-areas:"judge judge" "p d"}
+  .judge-wrap{grid-area:judge}
+  .side.plaintiff{grid-area:p}
+  .side.defendant{grid-area:d}
+  .judge-wrap svg{max-width:200px}
+}
+
+/* Panel / paper */
+.paper{
+  background:var(--paper); color:var(--ink); border-radius:4px; padding:22px clamp(16px,4vw,32px);
+  box-shadow:0 1px 0 var(--paper-2), 0 18px 40px #0007; position:relative;
+}
+.paper h2{font-family:var(--f-display); font-size:1.65rem; margin:0 0 4px; line-height:1.3; text-wrap:balance}
+.paper .lead{margin:0 0 18px; color:var(--ink-soft); font-size:.93rem}
+.field{display:flex; flex-direction:column; gap:6px; margin-bottom:16px}
+.field > label, .field > .flabel{font-weight:500; font-size:.92rem}
+.hint{font-size:.8rem; color:var(--ink-soft)}
+input[type=text],textarea,select{
+  width:100%; background:#fffaf0; color:var(--ink); border:1px solid #cdb995; border-radius:4px;
+  padding:10px 12px; line-height:1.6;
+}
+textarea{min-height:150px; resize:vertical; font-family:var(--f-doc); font-size:1.05rem}
+input::placeholder,textarea::placeholder{color:#a08b72}
+.two{display:grid; grid-template-columns:1fr 1fr; gap:16px}
+@media (max-width:620px){.two{grid-template-columns:1fr}}
+.party-box{border:1px solid #d8c6a4; border-radius:4px; padding:12px; background:#fbf4e6; min-width:0}
+.party-box.p{border-top:3px solid var(--plaintiff)}
+.party-box.d{border-top:3px solid var(--defendant)}
+.party-box h3{margin:0 0 8px; font-size:1rem; font-weight:600}
+.party-box.p h3{color:var(--plaintiff)} .party-box.d h3{color:var(--defendant)}
+.chips{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; min-height:32px}
+.chip{display:inline-flex; align-items:center; gap:6px; background:#fff; border:1px solid #d8c6a4; border-radius:999px; padding:2px 6px 2px 12px; font-size:.92rem}
+.chip button{border:0; background:transparent; color:var(--ink-soft); cursor:pointer; width:24px; height:24px; border-radius:50%; line-height:1}
+.chip button:hover{background:#0001; color:var(--seal)}
+.adder{display:flex; gap:6px}
+.adder input{flex:1; min-width:0}
+.seg{display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:8px}
+.seg label{display:flex; align-items:center; gap:8px; border:1px solid #cdb995; border-radius:4px; padding:8px 12px; cursor:pointer; background:#fffaf0; min-width:0}
+.seg input{accent-color:var(--bisht)}
+.seg label,.choices label{position:relative; transition:background .15s, color .15s, border-color .15s}
+.seg label:has(input:checked),.seg label.sel,.choices label:has(input:checked),.choices label.sel{
+  background:var(--bisht); color:var(--paper); border-color:var(--zari); box-shadow:inset 0 0 0 1px var(--zari), 0 3px 10px #4a2c1c40}
+.seg label:has(input:checked) small,.seg label.sel small{color:#e6d4b4}
+.seg label:has(input:checked)::after,.seg label.sel::after,.choices label:has(input:checked)::after,.choices label.sel::after{
+  content:"✓"; position:absolute; inset-inline-end:10px; top:50%; transform:translateY(-50%);
+  width:24px; height:24px; border-radius:50%; background:var(--zari); color:var(--bisht);
+  display:flex; align-items:center; justify-content:center; font-weight:700; font-size:.85rem}
+.seg label:has(input:checked) span,.seg label.sel span,.choices label:has(input:checked) span,.choices label.sel span{padding-inline-end:28px}
+.seg input,.choices input{position:absolute; opacity:0; width:1px; height:1px; margin:0}
+.seg label:has(input:focus-visible),.choices label:has(input:focus-visible){outline:2px solid var(--zari); outline-offset:2px}
+.switch{display:flex; align-items:center; justify-content:space-between; gap:12px; border:1px solid #cdb995; border-radius:4px; padding:10px 12px; background:#fffaf0; cursor:pointer}
+.switch .st{display:block; font-weight:500}
+.switch small{display:block; color:var(--ink-soft); font-size:.78rem}
+.switch input{position:absolute; opacity:0; width:1px; height:1px}
+.knob{flex:none; width:48px; height:28px; border-radius:999px; background:#cbb994; position:relative; transition:background .2s}
+.knob::after{content:""; position:absolute; top:3px; inset-inline-start:3px; width:22px; height:22px; border-radius:50%; background:#fff; box-shadow:0 1px 3px #0004; transition:inset-inline-start .2s}
+.switch input:checked + .knob{background:var(--plaintiff)}
+.switch input:checked + .knob::after{inset-inline-start:23px}
+.switch input:focus-visible + .knob{outline:2px solid var(--zari); outline-offset:2px}
+.seg small{display:block; color:var(--ink-soft); font-size:.78rem}
+
+.btn{
+  border:0; cursor:pointer; border-radius:4px; padding:11px 20px; font-weight:600; font-size:1rem;
+  background:var(--bisht); color:var(--paper); box-shadow:inset 0 -2px 0 #0004, 0 0 0 1px var(--zari) inset;
+  transition:transform .1s, background .2s;
+}
+.btn:hover{background:#5b3825}
+.btn:active{transform:translateY(1px)}
+.btn:disabled{opacity:.5; cursor:not-allowed}
+.btn.ghost{background:transparent; color:var(--ink); box-shadow:inset 0 0 0 1px #b9a37e}
+.btn.ghost:hover{background:#0000000a}
+.btn.small{padding:8px 14px; font-size:.9rem}
+.btn.p{background:var(--plaintiff); box-shadow:inset 0 -2px 0 #0003}
+.btn.d{background:var(--defendant); box-shadow:inset 0 -2px 0 #0003}
+.actions{display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:6px}
+.err{color:var(--seal); font-size:.88rem; min-height:1.4em; margin:6px 0 0}
+
+/* Transcript */
+.mahdar{border-top:1px dashed #bda888; margin-top:4px; padding-top:14px; margin-bottom:18px; display:flex; flex-direction:column; gap:12px}
+.mahdar .mh{font-size:.78rem; letter-spacing:.08em; color:var(--ink-soft)}
+.entry{border-inline-start:3px solid; padding:4px 12px 4px 0; padding-inline-start:12px}
+.entry.p{border-color:var(--plaintiff)} .entry.d{border-color:var(--defendant)}
+.entry.j{border-color:var(--zari); background:#c9a25a1a; padding-block:6px}
+.entry.j .who{color:var(--bisht)}
+.entry .who{font-size:.82rem; font-weight:600}
+.entry.p .who{color:var(--plaintiff)} .entry.d .who{color:var(--defendant)}
+.entry .txt{font-family:var(--f-doc); font-size:1.02rem; white-space:pre-wrap; overflow-wrap:anywhere}
+
+.turn-tag{display:inline-block; font-size:.8rem; font-weight:600; padding:2px 10px; border-radius:999px; margin-bottom:8px}
+.turn-tag.p{background:var(--plaintiff-soft); color:var(--plaintiff)}
+.turn-tag.d{background:var(--defendant-soft); color:var(--defendant)}
+.qbox{border:2px solid var(--bisht); background:#f8eedb; border-radius:4px; padding:14px 16px; margin-bottom:16px}
+.qbox .qlabel{font-size:.78rem; letter-spacing:.06em; color:var(--bisht); font-weight:600}
+.qbox .qtext{font-family:var(--f-doc); font-size:1.2rem; font-weight:600; margin:4px 0 0}
+.choices{display:flex; flex-direction:column; gap:8px; margin-bottom:12px}
+.choices label{display:flex; gap:10px; align-items:flex-start; border:1px solid #cdb995; border-radius:4px; padding:10px 12px; background:#fffaf0; cursor:pointer; font-family:var(--f-doc); font-size:1.03rem}
+.choices input{margin-top:6px; accent-color:var(--bisht)}
+.resp{margin-top:6px}
+.resp-bar{display:flex; height:28px; border-radius:3px; overflow:hidden; border:1px solid #c9b48c; font-family:var(--f-ui); font-size:.82rem; font-weight:600; color:#fff}
+.resp-bar span{display:flex; align-items:center; justify-content:center; min-width:0; white-space:nowrap; overflow:hidden; font-variant-numeric:tabular-nums}
+.resp-bar .rp{background:var(--plaintiff)} .resp-bar .rd{background:var(--defendant)}
+.resp-legend{display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; font-family:var(--f-ui); font-size:.85rem; margin-top:6px}
+.resp-legend .lp{color:var(--plaintiff)} .resp-legend .ld{color:var(--defendant)}
+
+.handoff{text-align:center; padding-block:30px}
+.handoff .big{font-family:var(--f-display); font-size:clamp(1.8rem,6vw,2.6rem); line-height:1.3; margin:6px 0 10px}
+.handoff p{color:var(--ink-soft); margin:0 0 20px}
+
+/* Deed / صك */
+.deed{font-family:var(--f-doc); border:1px solid #c9b48c; outline:1px solid #c9b48c; outline-offset:4px}
+.deed-head{display:flex; justify-content:space-between; flex-wrap:wrap; gap:6px 16px; font-family:var(--f-ui); font-size:.8rem; color:var(--ink-soft); border-bottom:1px solid #c9b48c; padding-bottom:10px; margin-bottom:12px}
+.deed h2{text-align:center; font-size:2rem; margin:4px 0 2px}
+.deed .case{text-align:center; color:var(--ink-soft); margin:0 0 18px; font-size:1.05rem}
+.deed section{margin-bottom:16px}
+.deed h4{font-family:var(--f-ui); font-size:.8rem; letter-spacing:.08em; color:var(--bisht); margin:0 0 4px; font-weight:600}
+.deed p{margin:0; font-size:1.07rem}
+.deed ol,.deed ul{margin:0; padding-inline-start:22px; font-size:1.05rem}
+.deed .cols{display:grid; grid-template-columns:1fr 1fr; gap:16px}
+@media (max-width:620px){.deed .cols{grid-template-columns:1fr}}
+.ruling{
+  border:2px solid var(--bisht); background:#f8eedb; padding:14px 16px; border-radius:2px; position:relative;
+}
+.ruling .outcome{font-family:var(--f-ui); font-size:.85rem; font-weight:600; display:inline-block; padding:2px 10px; border-radius:999px; margin-bottom:6px}
+.outcome.plaintiff{background:var(--plaintiff-soft); color:var(--plaintiff)}
+.outcome.defendant{background:var(--defendant-soft); color:var(--defendant)}
+.outcome.partial{background:#c9a25a33; color:#7a5a1a}
+.ruling p{font-size:1.22rem; font-weight:600; line-height:1.7}
+.penalty{margin-top:10px; font-size:1.02rem}
+.words{font-family:var(--f-display); font-size:1.35rem; text-align:center; color:var(--bisht); margin:18px 0 6px; text-wrap:balance}
+.sign{display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap; margin-top:10px}
+.sign .who{font-family:var(--f-ui); font-size:.85rem; color:var(--ink-soft)}
+.sign .who b{display:block; font-family:var(--f-display); font-size:1.3rem; color:var(--ink); font-weight:700}
+.seal{width:118px; height:118px; flex:none; color:var(--seal); transform:rotate(-12deg); opacity:.88}
+.stamp-in{animation:stamp .55s cubic-bezier(.2,1.6,.4,1) both .2s}
+@keyframes stamp{from{transform:rotate(-12deg) scale(2.2); opacity:0} to{transform:rotate(-12deg) scale(1); opacity:.88}}
+.appeal-note{font-family:var(--f-ui); font-size:.85rem; background:#c9a25a2e; border-radius:4px; padding:8px 12px; margin-bottom:14px}
+
+.notice{background:#fbf1dc; border:1px solid #d6b878; border-radius:4px; padding:10px 14px; font-size:.9rem; margin-bottom:14px}
+.report{display:block; margin:10px 0 0; margin-inline-start:auto; background:none; border:0; color:var(--ink-soft); font-size:.8rem; text-decoration:underline; cursor:pointer; padding:4px}
+.report:disabled{text-decoration:none; cursor:default}
+.footer-links{text-align:center; margin:0; font-size:.8rem}
+.footer-links a{color:var(--on-hall-soft)}
+.footer-note{color:var(--on-hall-soft); font-size:.8rem; text-align:center; margin:0}
+.credit{text-align:center; margin:-8px 0 0; color:var(--on-hall-soft); font-size:.9rem}
+.credit b{font-family:var(--f-display); font-size:1.25rem; color:var(--zari); font-weight:700}
+
+@media (prefers-reduced-motion:reduce){
+  *{animation:none!important; transition:none!important}
+}
+</style>
+
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <pattern id="shmagh" width="6" height="6" patternUnits="userSpaceOnUse">
+      <rect width="6" height="6" fill="#f6f0e5"/>
+      <path d="M0 0h3v3H0zM3 3h3v3H3z" fill="#b3202a"/>
+    </pattern>
+    <pattern id="ghutra" width="8" height="8" patternUnits="userSpaceOnUse">
+      <rect width="8" height="8" fill="#fbfaf6"/>
+      <path d="M0 8L8 0" stroke="#e7e2d6" stroke-width="1"/>
+    </pattern>
+    <linearGradient id="bishtG" x1="0" x2="1">
+      <stop offset="0" stop-color="#2e1a10"/><stop offset=".5" stop-color="#4f301e"/><stop offset="1" stop-color="#2e1a10"/>
+    </linearGradient>
+    <clipPath id="judgeCrown"><path d="M79 112 C75 66 96 41 130 41 C164 41 185 66 181 112 Z"/></clipPath>
+    <clipPath id="miniCrown"><path d="M37 66 C35 42 45 25 60 25 C75 25 85 42 83 66 Z"/></clipPath>
+    <linearGradient id="agalShade" x1="0" x2="1">
+      <stop offset="0" stop-color="#000" stop-opacity=".9"/><stop offset=".22" stop-color="#000" stop-opacity="0"/>
+      <stop offset=".78" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".9"/>
+    </linearGradient>
+    <linearGradient id="benchG" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6b4429"/><stop offset="1" stop-color="#3d2617"/>
+    </linearGradient>
+  </defs>
+</svg>
+
+<div class="app" dir="rtl" lang="ar">
+  <header class="brand">
+    <h1>تقاضي الأخوياء</h1>
+    <p>محكمة الاستراحة العامة · الدائرة الأولى للخلافات الأخوية</p>
+  </header>
+
+  <section class="court" aria-label="قاعة المحكمة">
+    <div class="scene">
+      <div class="side plaintiff" id="side-p">
+        <div class="figures" id="fig-p"></div>
+        <div class="names" id="names-p"></div>
+        <div class="label"><b>المدّعون</b></div>
+      </div>
+
+      <div class="judge-wrap" id="judge">
+        <div class="bubble" id="bubble">يتأمّل في القضية…</div>
+        <svg viewBox="0 0 260 270" role="img" aria-label="القاضي بالبشت والشماغ">
+          <!-- bisht -->
+          <path d="M12 270 L48 170 Q130 136 212 170 L248 270 Z" fill="url(#bishtG)"/>
+          <!-- thobe front -->
+          <path d="M108 160 L152 160 L162 270 L98 270 Z" fill="#f4f0e8"/>
+          <path d="M130 172 L130 232" stroke="#d9d2c4" stroke-width="2"/>
+          <circle cx="130" cy="182" r="2" fill="#bfb6a5"/><circle cx="130" cy="196" r="2" fill="#bfb6a5"/>
+          <!-- zari trim -->
+          <path d="M108 160 L98 270" stroke="#d1aa5e" stroke-width="6"/>
+          <path d="M152 160 L162 270" stroke="#d1aa5e" stroke-width="6"/>
+          <path d="M102 222 L94 270 M158 222 L166 270" stroke="#a8853f" stroke-width="2"/>
+          <path d="M48 170 Q130 136 212 170" stroke="#d1aa5e" stroke-width="3" fill="none"/>
+          <!-- neck -->
+          <rect x="118" y="132" width="24" height="26" fill="#b98258"/>
+          <!-- shmagh: crown with a soft peak -->
+          <path d="M79 112 C75 66 96 41 130 41 C164 41 185 66 181 112 Z" fill="url(#shmagh)"/>
+          <!-- shmagh: long flaps falling over the shoulders down the chest -->
+          <path d="M81 94 Q76 150 92 204 L118 204 Q104 166 106 130 Q100 116 103 98 Z" fill="url(#shmagh)"/>
+          <path d="M179 94 Q184 150 168 204 L142 204 Q156 166 154 130 Q160 116 157 98 Z" fill="url(#shmagh)"/>
+          <path d="M106 130 Q104 168 116 204 M154 130 Q156 168 144 204" stroke="#6e1218" stroke-width="2" fill="none" opacity=".55"/>
+          <path d="M92 122 Q90 160 100 204 M168 122 Q170 160 160 204" stroke="#6e1218" stroke-width="1.2" fill="none" opacity=".3"/>
+          <!-- face -->
+          <ellipse cx="130" cy="108" rx="26" ry="32" fill="#c58c62"/>
+          <!-- shmagh edge over the forehead -->
+          <path d="M99 72 L161 72 L159 96 Q130 82 101 96 Z" fill="url(#shmagh)"/>
+          <path d="M101 96 Q130 82 159 96" stroke="#6e1218" stroke-width="1.2" fill="none" opacity=".5"/>
+          <!-- agal: only the front of the double cord shows; it wraps out of sight at the head's edges -->
+          <g clip-path="url(#judgeCrown)">
+            <path d="M70 55 Q130 71 190 55 L190 69 Q130 89 70 69 Z" fill="#141111"/>
+            <path d="M70 62 Q130 80 190 62" stroke="#3a3433" stroke-width="1.6" fill="none"/>
+            <path d="M74 57 Q130 72 186 57" stroke="#5b5351" stroke-width="1.2" fill="none" opacity=".8"/>
+            <path d="M74 64.5 Q130 81 186 64.5" stroke="#5b5351" stroke-width="1" fill="none" opacity=".55"/>
+            <path d="M70 55 Q130 71 190 55 L190 69 Q130 89 70 69 Z" fill="url(#agalShade)" opacity=".6"/>
+          </g>
+          <!-- brows -->
+          <path d="M110 98 L125 101" stroke="#1d1612" stroke-width="4" stroke-linecap="round"/>
+          <path d="M135 101 L150 98" stroke="#1d1612" stroke-width="4" stroke-linecap="round"/>
+          <!-- eyes -->
+          <g id="j-eyes"><ellipse cx="118" cy="105" rx="3.2" ry="2.6" fill="#1d1612"/><ellipse cx="142" cy="105" rx="3.2" ry="2.6" fill="#1d1612"/></g>
+          <!-- nose -->
+          <path d="M130 106 Q127 118 131 120" stroke="#9e6a45" stroke-width="2" fill="none" stroke-linecap="round"/>
+          <!-- beard + mustache -->
+          <path d="M103 112 Q104 150 130 154 Q156 150 157 112 Q152 136 130 138 Q108 136 103 112 Z" fill="#1d1612"/>
+          <path d="M116 126 Q130 120 144 126 Q130 130 116 126 Z" fill="#1d1612"/>
+          <path d="M123 132 Q130 134 137 132" stroke="#7a3e2c" stroke-width="2" fill="none" stroke-linecap="round"/>
+          <!-- bench -->
+          <rect x="0" y="206" width="260" height="64" fill="url(#benchG)"/>
+          <rect x="0" y="202" width="260" height="8" fill="#7d5233"/>
+          <rect x="0" y="210" width="260" height="2" fill="#2a190f"/>
+          <!-- scale emblem -->
+          <g transform="translate(130 240)" stroke="#d1aa5e" stroke-width="2" fill="none" stroke-linecap="round">
+            <path d="M0 -20 V14 M-12 14 H12 M-22 -14 H22"/>
+            <path d="M-22 -14 L-29 -2 M-22 -14 L-15 -2 M22 -14 L15 -2 M22 -14 L29 -2"/>
+            <path d="M-30 -2 Q-22 6 -14 -2 Z M14 -2 Q22 6 30 -2 Z" fill="#d1aa5e33"/>
+            <circle cx="0" cy="-22" r="2.5" fill="#d1aa5e"/>
+          </g>
+          <!-- deed on bench -->
+          <g transform="translate(184 194) rotate(-6)">
+            <rect width="40" height="14" fill="#f1e7d3"/><path d="M5 5h28M5 9h20" stroke="#a08b72" stroke-width="1.2"/>
+          </g>
+        </svg>
+        <div class="nameplate" id="judge-name">الشيخ حَكَم بن عادل</div>
+      </div>
+
+      <div class="side defendant" id="side-d">
+        <div class="figures" id="fig-d"></div>
+        <div class="names" id="names-d"></div>
+        <div class="label"><b>المدّعى عليهم</b></div>
+      </div>
+    </div>
+  </section>
+
+  <main id="panel" class="paper" aria-live="polite"></main>
+  <p class="footer-note">لعبة مزح بين الأخوياء. أحكامها للضحك فقط وليست رأيًا قانونيًا.</p>
+  <p class="credit">من إنشاء <b>استوديو قرطاس</b></p>
+  <p class="footer-links"><a href="privacy.html">سياسة الخصوصية</a></p>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------- state ---------- */
+  const DEFAULT_JUDGE = "الشيخ حَكَم بن عادل";
+  const state = {
+    stage: "setup",
+    title: "ريان ما جاب دبة الموية في الكشتة",
+    plaintiffs: ["عمار", "أحمد"],
+    defendants: ["ريان"],
+    judge: DEFAULT_JUDGE,
+    tone: "tqtqa",
+    rounds: [],            // {side:'p'|'d'|'j', kind:string, text}
+    rebuts: 0,
+    askQs: true,
+    q: null,               // {to, question, options}
+    afterAnswer: null,
+    verdict: null,
+    appeals: [],           // {side, text}
+    caseNo: Math.floor(1000 + Math.random()*8999),
+    error: ""
+  };
+
+  /* ضع هنا رابط الخادم بعد نشره على Cloudflare (بدون / في النهاية) */
+  const API_URL = "https://taqadi-judge.YOUR-SUBDOMAIN.workers.dev";
+  const sample = true;
+  let ctl = null;
+
+  /* ---------- helpers ---------- */
+  const $ = id => document.getElementById(id);
+  function el(tag, attrs, ...kids){
+    const n = document.createElement(tag);
+    if (attrs) for (const [k,v] of Object.entries(attrs)){
+      if (v == null || v === false) continue;
+      if (k === "class") n.className = v;
+      else if (k.startsWith("on")) n.addEventListener(k.slice(2), v);
+      else if (k === "text") n.textContent = v;
+      else n.setAttribute(k, v === true ? "" : v);
+    }
+    for (const c of kids.flat()) if (c != null && c !== false) n.append(c.nodeType ? c : document.createTextNode(String(c)));
+    return n;
+  }
+  function markSel(input){
+    document.querySelectorAll('input[name="'+input.name+'"]').forEach(r => r.closest("label")?.classList.toggle("sel", r.checked));
+  }
+  const joinNames = arr => arr.length <= 1 ? (arr[0]||"") : arr.slice(0,-1).join("، ") + " و" + arr[arr.length-1];
+  const sideNames = s => s === "j" ? (state.judge || DEFAULT_JUDGE) : joinNames(s === "p" ? state.plaintiffs : state.defendants);
+
+  const TONES = {
+    razin:  {t:"رزين", s:"هيبة وفصحى، قليل المزح", p:"وقور وهادئ، يكتب بفصحى رصينة فيها لمسة سعودية خفيفة، ودعابته قليلة جدًا."},
+    tqtqa:  {t:"يحب الطقطقة", s:"هيبة البشت مع طقطقة خفيفة", p:"وقور في هيئته لكنه يحب الطقطقة الخفيفة على الأطراف بلهجة سعودية بيضاء، بدون تجريح ولا سخرية من أشخاصهم."},
+    shayeb: {t:"شايب حكيم", s:"أمثال شعبية وقصص أيام أوّل", p:"شايب حكيم كبير في السن، يتكلم بلهجة نجدية قديمة دافئة، ويستشهد كثيرًا بالأمثال الشعبية ويذكر قصصًا قصيرة من أيام أوّل والبر والقهوة، ويختم بنصيحة أبوية."},
+    qanoni: {t:"دقيق قانوني", s:"مصطلحات قانونية بجدية تامة", p:"قاضٍ قانوني دقيق جدًا، يتعامل مع القضية بجدية تامة كأنها قضية حقيقية في محكمة، ويستخدم مصطلحات قانونية صحيحة (الإيجاب والقبول، الإخلال بالالتزام، عبء الإثبات، القرينة، التعويض، الدفع الموضوعي) بفصحى رسمية، والطرافة تأتي من جديته المفرطة في قضية بسيطة."},
+    shaer:  {t:"شاعر", s:"يختم الحكم ببيتين نبطيين", p:"قاضٍ شاعر يحب الشعر النبطي، يعلّق بلغة فيها جرس شعري، ويختم منطوق الحكم ببيتين من الشعر النبطي من تأليفه موزونين ومقفّيين عن القضية."},
+    asabi:  {t:"عصبي", s:"ما يطوّل، يحكم بسطرين", p:"قاضٍ عصبي قليل الصبر، كلامه مختصر جدًا وحاد بلهجة سعودية، يتأفف من التطويل ويقاطع، ويحكم بسرعة بجمل قصيرة، دون إهانة حقيقية."}
+  };
+  const toneText = () => (TONES[state.tone] || TONES.tqtqa).p;
+
+  /* ---------- party figures ---------- */
+  const SKINS = ["#c58c62","#a8704a","#d29c74","#8f5c3c","#bd855c"];
+  function person(i, side){
+    const skin = SKINS[i % SKINS.length];
+    const head = (i + (side==="d"?1:0)) % 2 === 0 ? "url(#shmagh)" : "url(#ghutra)";
+    const beard = i % 3 !== 2;
+    const fold = head === "url(#shmagh)" ? "#6e1218" : "#bdb5a5";
+    const brows = side === "p"
+      ? '<path d="M48 47 L57 50 M63 50 L72 47" stroke="#1d1612" stroke-width="2.6" stroke-linecap="round"/>'
+      : '<path d="M48 49 L57 46 M63 46 L72 49" stroke="#1d1612" stroke-width="2.6" stroke-linecap="round"/>';
+    const sweat = side === "d" ? '<path d="M79 44 Q83 51 79 54 Q75 51 79 44 Z" fill="#9fd3ea"/>' : "";
+    return '<svg viewBox="0 0 120 150" aria-hidden="true">'
+      + '<path d="M16 150 Q18 100 60 92 Q102 100 104 150 Z" fill="#f4f0e8"/>'
+      + '<path d="M60 96 V150" stroke="#d9d2c4" stroke-width="1.6"/>'
+      + '<rect x="53" y="74" width="14" height="20" fill="'+skin+'"/>'
+      /* crown with soft peak */
+      + '<path d="M37 66 C35 42 45 25 60 25 C75 25 85 42 83 66 Z" fill="'+head+'"/>'
+      /* long flaps down the chest */
+      + '<path d="M39 54 Q32 98 40 150 L56 150 Q48 112 49 84 Q45 74 46 58 Z" fill="'+head+'"/>'
+      + '<path d="M81 54 Q88 98 80 150 L64 150 Q72 112 71 84 Q75 74 74 58 Z" fill="'+head+'"/>'
+      + '<path d="M49 84 Q48 114 56 150 M71 84 Q72 114 64 150" stroke="'+fold+'" stroke-width="1.4" fill="none" opacity=".6"/>'
+      + '<ellipse cx="60" cy="57" rx="15" ry="19" fill="'+skin+'"/>'
+      + '<path d="M44 38 L76 38 L75 50 Q60 43 45 50 Z" fill="'+head+'"/>'
+      /* agal: front of the double cord, clipped to the head */
+      + '<g clip-path="url(#miniCrown)">'
+      + '<path d="M34 33 Q60 41 86 33 L86 40.5 Q60 50.5 34 40.5 Z" fill="#141111"/>'
+      + '<path d="M34 36.8 Q60 45.5 86 36.8" stroke="#3a3433" stroke-width="1" fill="none"/>'
+      + '<path d="M36 34 Q60 41.5 84 34" stroke="#5b5351" stroke-width=".7" fill="none"/>'
+      + '<path d="M34 33 Q60 41 86 33 L86 40.5 Q60 50.5 34 40.5 Z" fill="url(#agalShade)" opacity=".6"/>'
+      + '</g>'
+      + brows
+      + '<circle cx="53" cy="56" r="2" fill="#1d1612"/><circle cx="67" cy="56" r="2" fill="#1d1612"/>'
+      + (beard ? '<path d="M45 62 Q46 80 60 82 Q74 80 75 62 Q71 74 60 75 Q49 74 45 62 Z" fill="#1d1612"/>' : '')
+      + '<path d="M54 68 Q60 64.5 66 68" stroke="#1d1612" stroke-width="2.4" fill="none" stroke-linecap="round"/>'
+      + sweat
+      + '</svg>';
+  }
+  function renderScene(){
+    const fp = $("fig-p"), fd = $("fig-d");
+    fp.innerHTML = state.plaintiffs.slice(0,3).map((_,i)=>person(i,"p")).join("") || person(0,"p");
+    fd.innerHTML = state.defendants.slice(0,3).map((_,i)=>person(i+1,"d")).join("") || person(1,"d");
+    $("names-p").textContent = joinNames(state.plaintiffs) || "—";
+    $("names-d").textContent = joinNames(state.defendants) || "—";
+    $("judge-name").textContent = state.judge || DEFAULT_JUDGE;
+    const speaking = state.stage === "answer" && state.q ? state.q.to : {claim:"p", defense:"d", rebut_p:"p", rebut_d:"d"}[state.stage];
+    $("side-p").classList.toggle("speaking", speaking==="p");
+    $("side-d").classList.toggle("speaking", speaking==="d");
+    $("side-p").classList.toggle("dim", speaking==="d");
+    $("side-d").classList.toggle("dim", speaking==="p");
+    $("judge").classList.toggle("thinking", state.stage==="deliberating" || state.stage==="interjecting");
+  }
+
+  /* ---------- transcript ---------- */
+  function mahdar(){
+    if (!state.rounds.length) return null;
+    return el("div",{class:"mahdar"},
+      el("div",{class:"mh",text:"محضر الجلسة"}),
+      state.rounds.map(r => el("div",{class:"entry "+r.side},
+        el("div",{class:"who",text: r.kind + " · " + sideNames(r.side)}),
+        el("div",{class:"txt",text:r.text})
+      ))
+    );
+  }
+
+  /* ---------- stages ---------- */
+  function partyBox(key, cls, title){
+    const list = state[key];
+    const inp = el("input",{type:"text", id:"add-"+key, placeholder:"اكتب الاسم", maxlength:"30"});
+    const add = () => {
+      const v = inp.value.trim();
+      if (!v) return;
+      if (state.plaintiffs.includes(v) || state.defendants.includes(v)) { state.error = "«"+v+"» موجود في القضية من قبل."; render(); return; }
+      if (list.length >= 6) { state.error = "يكفي ستة أسماء في كل طرف."; render(); return; }
+      list.push(v); state.error = ""; render();
+      const again = $("add-"+key); if (again) again.focus();
+    };
+    inp.addEventListener("keydown", e => { if (e.key === "Enter"){ e.preventDefault(); add(); } });
+    return el("div",{class:"party-box "+cls},
+      el("h3",{text:title}),
+      el("div",{class:"chips"},
+        list.length ? list.map((n,i)=>el("span",{class:"chip"}, n,
+          el("button",{type:"button","aria-label":"حذف "+n, onclick:()=>{ list.splice(i,1); render(); }}, "×")))
+        : el("span",{class:"hint",text:"ما فيه أحد للحين"})
+      ),
+      el("div",{class:"adder"}, inp, el("button",{type:"button",class:"btn small ghost",onclick:add},"إضافة"))
+    );
+  }
+
+  function stageSetup(){
+    const title = el("input",{type:"text",id:"case-title",value:state.title,maxlength:"120",placeholder:"مثال: فلان ما دفع حقه في العشا"});
+    title.addEventListener("input", e => state.title = e.target.value);
+    const judge = el("input",{type:"text",id:"judge-input",value:state.judge,maxlength:"40"});
+    judge.addEventListener("input", e => { state.judge = e.target.value; $("judge-name").textContent = e.target.value || DEFAULT_JUDGE; });
+    const tone = (val, t, s) => el("label",{class: state.tone===val ? "sel" : null},
+      el("input",{type:"radio",name:"tone",value:val,checked:state.tone===val,onchange:e=>{ state.tone=val; markSel(e.target); }}),
+      el("span",null, t, el("small",{text:s})));
+    return [
+      el("h2",{text:"قيد دعوى جديدة"}),
+      el("p",{class:"lead",text:"حدّدوا موضوع الخلاف وأطرافه. ما فيه محامين ولا وكلاء، كل طرف يدافع عن نفسه قدّام القاضي."}),
+      el("div",{class:"field"}, el("label",{for:"case-title",text:"موضوع الدعوى"}), title),
+      el("div",{class:"field"}, el("span",{class:"flabel",text:"أطراف الدعوى"}),
+        el("div",{class:"two"}, partyBox("plaintiffs","p","المدّعون"), partyBox("defendants","d","المدّعى عليهم"))),
+      el("div",{class:"field"}, el("label",{for:"judge-input",text:"اسم القاضي"}), judge),
+      el("div",{class:"field"}, el("span",{class:"flabel",text:"طبع القاضي"}),
+        el("div",{class:"seg"}, Object.entries(TONES).map(([k,v]) => tone(k, v.t, v.s)))),
+      el("div",{class:"field"},
+        el("label",{class:"switch",for:"ask-toggle"},
+          el("span",null, el("span",{class:"st",text:"أسئلة الشيخ أثناء الجلسة"}),
+            el("small",{text:"الشيخ يسأل كل طرف سؤال وتجاوبون باختيار أو بالكتابة. طفّوها إذا تبون الجلسة أسرع."})),
+          el("input",{type:"checkbox",id:"ask-toggle",role:"switch",checked:state.askQs,onchange:e=>{ state.askQs = e.target.checked; }}),
+          el("span",{class:"knob","aria-hidden":"true"}))),
+      el("p",{class:"err",text:state.error}),
+      el("div",{class:"actions"},
+        el("button",{type:"button",class:"btn",onclick:()=>{
+          if (!state.title.trim()) { state.error="اكتبوا موضوع الدعوى."; return render(); }
+          if (!state.plaintiffs.length || !state.defendants.length) { state.error="لازم مدّعٍ واحد ومدّعى عليه واحد على الأقل."; return render(); }
+          state.error=""; state.rounds=[]; state.rebuts=0; state.q=null; state.verdict=null; state.appeals=[];
+          go("handoff_claim");
+        }},"افتتاح الجلسة"))
+    ];
+  }
+
+  function handoff(side, next, note){
+    return el("div",{class:"handoff"},
+      el("span",{class:"turn-tag "+side,text: side==="p"?"دور المدّعين":"دور المدّعى عليه"}),
+      el("div",{class:"big",text:"الجوال عند " + sideNames(side)}),
+      el("p",{text:note}),
+      el("button",{type:"button",class:"btn "+side,onclick:()=>go(next)},"جاهزين، نبدأ")
+    );
+  }
+
+  function writeStage(side, kind, heading, lead, placeholder, next){
+    const ta = el("textarea",{id:"speech",placeholder,maxlength:"2500"});
+    try { ta.value = sessionStorage.getItem("draft_"+state.stage) || ""; } catch(e){}
+    ta.addEventListener("input", () => { try { sessionStorage.setItem("draft_"+state.stage, ta.value); } catch(e){} });
+    return [
+      el("span",{class:"turn-tag "+side,text: kind + " · " + sideNames(side)}),
+      el("h2",{text:heading}),
+      el("p",{class:"lead",text:lead}),
+      mahdar(),
+      el("div",{class:"field"}, el("label",{for:"speech",text:"اكتبوا بالعامي أو الفصحى"}), ta),
+      el("p",{class:"err",text:state.error}),
+      el("div",{class:"actions"},
+        el("button",{type:"button",class:"btn "+side,onclick:()=>{
+          const v = ta.value.trim();
+          if (v.length < 5) { state.error="الكلام قصير مرة، وضّحوا أكثر."; return render(); }
+          state.error="";
+          try { sessionStorage.removeItem("draft_"+state.stage); } catch(e){}
+          state.rounds.push({side, kind, text:v});
+          const ask = !state.askQs ? null : state.stage === "claim" ? "p" : state.stage === "defense" ? "d" : null;
+          if (state.stage === "rebut_p") state.rebuts++;
+          interject(ask, next);
+        }},"تقديم للقاضي"))
+    ];
+  }
+
+  function stageChoice(){
+    const canMore = state.rebuts < 2;
+    return [
+      el("h2",{text:"هل تكتفون بما قُدّم؟"}),
+      el("p",{class:"lead",text:"تقدرون ترفعون القضية للحكم الحين، أو تطلبون جولة تعقيب: المدّعون يردّون، ثم المدّعى عليه يقول كلمته الأخيرة."}),
+      mahdar(),
+      el("p",{class:"err",text:state.error}),
+      el("div",{class:"actions"},
+        el("button",{type:"button",class:"btn",disabled:!sample,onclick:judgeCase},"رفع القضية للحكم"),
+        canMore ? el("button",{type:"button",class:"btn ghost",onclick:()=>go("handoff_rebut")},"جولة تعقيب") : el("span",{class:"hint",text:"خلصت جولات التعقيب المسموحة."}),
+        el("button",{type:"button",class:"btn ghost",onclick:()=>go("setup")},"تعديل الأطراف")
+      )
+    ];
+  }
+
+  const PHRASES = ["يقلّب أوراق القضية…","يراجع الدفوع…","يسأل عن البيّنة…","يكتب الصك…"];
+  let phraseTimer = null;
+  function stageDeliberating(){
+    return el("div",{class:"handoff"},
+      el("div",{class:"big",text:"رُفعت الجلسة للمداولة"}),
+      el("p",{text:(state.judge||DEFAULT_JUDGE) + " يدرس القضية. قد يأخذ نص دقيقة."}),
+      el("button",{type:"button",class:"btn ghost",onclick:()=>{ ctl && ctl.abort(); }},"إلغاء")
+    );
+  }
+
+  function stageInterjecting(){
+    return el("div",{class:"handoff"},
+      el("div",{class:"big",text:"القاضي يتأمّل كلامكم"}),
+      el("p",{text:(state.judge||DEFAULT_JUDGE) + " عنده تعليق قبل نكمل."}),
+      el("button",{type:"button",class:"btn ghost",onclick:()=>{ ctl && ctl.abort(); }},"تخطّي التعليق")
+    );
+  }
+
+  function stageAnswer(){
+    const q = state.q;
+    const OTHER = "__other";
+    let picked = null;
+    const other = el("textarea",{id:"speech",placeholder:"اكتب جوابك بطريقتك…",maxlength:"1200",style:"min-height:90px"});
+    other.hidden = true;
+    const radios = (q.options||[]).map((o,i) => el("label",null,
+      el("input",{type:"radio",name:"qans",id:"qans-"+i,onchange:e=>{ picked=o; other.hidden=true; markSel(e.target); }}), el("span",{text:o})));
+    radios.push(el("label",null,
+      el("input",{type:"radio",name:"qans",id:"qans-other",onchange:e=>{ picked=OTHER; other.hidden=false; markSel(e.target); other.focus(); }}),
+      el("span",{text:"جواب آخر، بكتبه بنفسي"})));
+    return [
+      el("span",{class:"turn-tag "+q.to,text:"سؤال من القاضي · " + sideNames(q.to)}),
+      el("h2",{text:"القاضي يسألكم"}),
+      el("p",{class:"lead",text:"اختاروا الجواب الأقرب للي صار، أو اكتبوا جوابكم."}),
+      mahdar(),
+      el("div",{class:"qbox"}, el("div",{class:"qlabel",text:"سؤال " + (state.judge||DEFAULT_JUDGE)}), el("p",{class:"qtext",text:q.question})),
+      reportButton(() => state.rounds.filter(r=>r.side==="j").map(r=>r.text).join("\n")),
+      el("div",{class:"choices",role:"radiogroup"}, radios),
+      other,
+      el("p",{class:"err",text:state.error}),
+      el("div",{class:"actions"},
+        el("button",{type:"button",class:"btn "+q.to,onclick:()=>{
+          const ans = picked === OTHER ? other.value.trim() : picked;
+          if (!ans || ans.length < 2) { state.error = picked===OTHER ? "اكتبوا جوابكم." : "اختاروا جوابًا."; return render(); }
+          state.error = "";
+          state.rounds.push({side:q.to, kind:"جواب على سؤال القاضي", text:ans});
+          state.q = null;
+          go(state.afterAnswer || "choice");
+        }},"إجابة القاضي"))
+    ];
+  }
+
+  function respBar(v){
+    const r = v.responsibility || {};
+    let a = Math.round(Number(r.plaintiff)), b = Math.round(Number(r.defendant));
+    if (!isFinite(a) || !isFinite(b) || a < 0 || b < 0 || a + b === 0) return null;
+    const t = a + b; a = Math.round(a*100/t); b = 100 - a;
+    const ar = n => n.toLocaleString("ar-SA");
+    return el("section",{class:"resp"},
+      el("h4",{text:"نسبة المسؤولية"}),
+      el("div",{class:"resp-bar",role:"img","aria-label":"المدّعون "+a+"٪، المدّعى عليه "+b+"٪"},
+        a ? el("span",{class:"rp",style:"width:"+a+"%",text: a>=12 ? ar(a)+"٪" : ""}) : null,
+        b ? el("span",{class:"rd",style:"width:"+b+"%",text: b>=12 ? ar(b)+"٪" : ""}) : null),
+      el("div",{class:"resp-legend"},
+        el("span",{class:"lp",text:"المدّعون (" + sideNames("p") + "): " + ar(a) + "٪"}),
+        el("span",{class:"ld",text:"المدّعى عليه (" + sideNames("d") + "): " + ar(b) + "٪"}))
+    );
+  }
+
+  const OUTCOME = {plaintiff:"الحكم لصالح المدّعين", defendant:"الحكم لصالح المدّعى عليه", partial:"حكم وسط بين الطرفين"};
+
+  function stageVerdict(){
+    const v = state.verdict;
+    const list = (arr, tag) => el(tag||"ul",null,(Array.isArray(arr)?arr:[]).map(x=>el("li",{text:String(x)})));
+    const appeal = el("textarea",{id:"appeal",placeholder:"وش اعتراضكم على الحكم؟ اكتبوه هنا…",maxlength:"1500",style:"min-height:100px"});
+    const appealSide = el("select",{id:"appeal-side"},
+      el("option",{value:"p",text:"المعترض: "+sideNames("p")}),
+      el("option",{value:"d",text:"المعترض: "+sideNames("d"),selected: v.verdict==="plaintiff"}));
+    const lastAppeal = state.appeals[state.appeals.length-1];
+    return [
+      el("article",{class:"deed"},
+        el("div",{class:"deed-head"},
+          el("span",{text:"محكمة الاستراحة العامة"}),
+          el("span",{text:"صك رقم " + state.caseNo + (state.appeals.length? " / استئناف "+state.appeals.length:"")}),
+          el("span",{text:new Date().toLocaleDateString("ar-SA-u-ca-islamic-umalqura",{day:"numeric",month:"long",year:"numeric"})})
+        ),
+        el("h2",{text:"صك حكم"}),
+        el("p",{class:"case",text:"في قضية: " + state.title}),
+        lastAppeal && v.appeal_result ? el("div",{class:"appeal-note",text:
+          ({upheld:"نتيجة الاعتراض: تأييد الحكم السابق.",modified:"نتيجة الاعتراض: تعديل الحكم.",overturned:"نتيجة الاعتراض: نقض الحكم السابق."}[v.appeal_result]||"")}) : null,
+        el("section",null, el("h4",{text:"الوقائع"}), el("p",{text:v.facts||""})),
+        el("div",{class:"cols"},
+          el("section",null, el("h4",{text:"دفوع المدّعين: "+sideNames("p")}), list(v.plaintiff_points)),
+          el("section",null, el("h4",{text:"دفوع المدّعى عليه: "+sideNames("d")}), list(v.defendant_points))
+        ),
+        el("section",null, el("h4",{text:"أسباب الحكم"}), list(v.reasoning,"ol")),
+        respBar(v),
+        el("section",{class:"ruling"},
+          el("span",{class:"outcome "+(OUTCOME[v.verdict]?v.verdict:"partial"),text:OUTCOME[v.verdict]||OUTCOME.partial}),
+          el("h4",{text:"منطوق الحكم"}),
+          el("p",{text:v.ruling||""}),
+          v.penalty ? el("div",{class:"penalty"}, el("strong",{text:"العقوبة: "}), v.penalty) : null
+        ),
+        v.words ? el("p",{class:"words",text:"«" + v.words + "»"}) : null,
+        el("div",{class:"sign"},
+          el("div",{class:"who"}, "القاضي", el("b",{text:state.judge||DEFAULT_JUDGE})),
+          seal()
+        )
+      ),
+      reportButton(() => JSON.stringify(v)),
+      el("div",{style:"margin-top:24px"},
+        el("h2",{text:"اعتراض على الحكم"}),
+        el("p",{class:"lead",text:"ما عجبكم الحكم؟ اكتبوا سبب الاعتراض والقاضي يعيد النظر."}),
+        el("div",{class:"field"}, el("label",{for:"appeal-side",text:"من المعترض؟"}), appealSide),
+        el("div",{class:"field"}, el("label",{for:"appeal",text:"سبب الاعتراض"}), appeal),
+        el("p",{class:"err",text:state.error}),
+        el("div",{class:"actions"},
+          el("button",{type:"button",class:"btn",disabled:!sample || state.appeals.length>=3,onclick:()=>{
+            const t = appeal.value.trim();
+            if (t.length < 5) { state.error="اكتبوا سبب الاعتراض."; return render(); }
+            state.error="";
+            state.appeals.push({side:appealSide.value, text:t});
+            judgeCase();
+          }}, state.appeals.length>=3 ? "انتهت درجات التقاضي" : "تقديم الاعتراض"),
+          el("button",{type:"button",class:"btn ghost",onclick:()=>{
+            state.rounds=[]; state.rebuts=0; state.q=null; state.verdict=null; state.appeals=[]; state.caseNo=Math.floor(1000+Math.random()*8999);
+            state.title=""; go("setup");
+          }},"قضية جديدة"),
+          el("button",{type:"button",class:"btn ghost",onclick:()=>{
+            state.rounds=[]; state.rebuts=0; state.q=null; state.verdict=null; state.appeals=[]; state.caseNo=Math.floor(1000+Math.random()*8999);
+            go("handoff_claim");
+          }},"نفس الأطراف، قضية ثانية")
+        )
+      )
+    ];
+  }
+
+  function seal(){
+    const name = state.judge || DEFAULT_JUDGE;
+    const s = document.createElementNS("http://www.w3.org/2000/svg","svg");
+    s.setAttribute("viewBox","0 0 120 120"); s.setAttribute("class","seal stamp-in"); s.setAttribute("aria-label","ختم المحكمة");
+    s.innerHTML = '<defs><path id="sealArc" d="M60 60 m-44 0 a44 44 0 1 1 88 0 a44 44 0 1 1 -88 0"/></defs>'
+      + '<circle cx="60" cy="60" r="56" fill="none" stroke="currentColor" stroke-width="3"/>'
+      + '<circle cx="60" cy="60" r="36" fill="none" stroke="currentColor" stroke-width="1.5"/>'
+      + '<text font-family="Readex Pro, sans-serif" font-size="9.5" fill="currentColor"><textPath href="#sealArc" startOffset="2%">محكمة الاستراحة العامة · محكمة الاستراحة العامة ·</textPath></text>'
+      + '<text x="60" y="58" text-anchor="middle" font-family="Aref Ruqaa, serif" font-size="16" fill="currentColor">صدر</text>'
+      + '<text x="60" y="76" text-anchor="middle" font-family="Aref Ruqaa, serif" font-size="12" fill="currentColor">الحكم</text>';
+    return s;
+  }
+
+  /* ---------- judge (server) ---------- */
+  function caseData(extra){
+    return Object.assign({
+      title: state.title, plaintiffs: state.plaintiffs, defendants: state.defendants,
+      judge: state.judge || DEFAULT_JUDGE, tone: state.tone,
+      rounds: state.rounds.map(r => ({side:r.side, kind:r.kind, text:r.text}))
+    }, extra || {});
+  }
+
+  async function callJudge(kind, extra, signal){
+    if (!navigator.onLine) throw {code:"offline"};
+    let res;
+    try {
+      res = await fetch(API_URL + "/judge", {
+        method:"POST", headers:{"content-type":"application/json"},
+        body: JSON.stringify({kind, c: caseData(extra)}), signal
+      });
+    } catch (e) {
+      throw {code: e && e.name === "AbortError" ? "cancelled" : "upstream_error"};
+    }
+    if (res.status === 429) throw {code:"rate_limited"};
+    if (res.status === 422) throw {code:"refused"};
+    if (!res.ok) throw {code:"upstream_error"};
+    return res.json();
+  }
+
+  async function sendReport(content, btn){
+    btn.disabled = true; btn.textContent = "يرسل البلاغ…";
+    try {
+      const res = await fetch(API_URL + "/report", {method:"POST", headers:{"content-type":"application/json"},
+        body: JSON.stringify({title: state.title, content: String(content).slice(0, 4000)})});
+      btn.textContent = res.ok ? "وصل البلاغ، شكرًا لكم" : "ما وصل البلاغ، جرّبوا بعدين";
+      if (!res.ok) btn.disabled = false;
+    } catch (e) { btn.textContent = "ما وصل البلاغ، جرّبوا بعدين"; btn.disabled = false; }
+  }
+  function reportButton(getContent){
+    const b = el("button",{type:"button",class:"report"},"إبلاغ عن محتوى مسيء");
+    b.addEventListener("click", () => sendReport(getContent(), b));
+    return b;
+  }
+
+  async function interject(ask, next){
+    go("interjecting");
+    $("bubble").textContent = "يتأمّل كلامكم…";
+    ctl = new AbortController();
+    try {
+      const r = await callJudge("comment", {ask}, ctl.signal);
+      if (r && typeof r.comment === "string" && r.comment.trim())
+        state.rounds.push({side:"j", kind:"تعليق القاضي", text:r.comment.trim()});
+      const opts = r && Array.isArray(r.options) ? r.options.map(String).filter(x=>x.trim()).slice(0,4) : [];
+      if (ask && r && typeof r.question === "string" && r.question.trim()){
+        state.rounds.push({side:"j", kind:"سؤال القاضي إلى " + sideNames(ask), text:r.question.trim()});
+        state.q = {to:ask, question:r.question.trim(), options:opts};
+        state.afterAnswer = next;
+        ctl = null;
+        return go("answer");
+      }
+    } catch (e) { /* skipped or failed: carry on without the comment */ }
+    ctl = null;
+    go(next);
+  }
+
+  async function judgeCase(){
+    const prevVerdict = state.verdict;
+    const prevStage = state.stage;
+    let extra = {};
+    if (state.appeals.length && prevVerdict){
+      const a = state.appeals[state.appeals.length-1];
+      extra = {appeal:{side:a.side, text:a.text}, prev:{ruling:prevVerdict.ruling||"", penalty:prevVerdict.penalty||""}};
+    }
+    go("deliberating");
+    let i = 0;
+    $("bubble").textContent = PHRASES[0];
+    clearInterval(phraseTimer);
+    phraseTimer = setInterval(()=>{ i=(i+1)%PHRASES.length; $("bubble").textContent = PHRASES[i]; }, 2600);
+    ctl = new AbortController();
+    try {
+      const v = await callJudge("verdict", extra, ctl.signal);
+      if (!v || typeof v !== "object" || !v.ruling) throw {code:"invalid_json"};
+      state.verdict = v; state.error = "";
+      go("verdict");
+      window.scrollTo({top: document.querySelector(".court").offsetTop, behavior:"smooth"});
+    } catch (e) {
+      const code = e && e.code;
+      state.verdict = prevVerdict;
+      if (prevVerdict && state.appeals.length) state.appeals.pop();
+      const copy = {
+        cancelled: "",
+        offline: "ما فيه اتصال بالإنترنت. اتصلوا وجرّبوا مرة ثانية.",
+        rate_limited: "وصلتوا حد القضايا لليوم. ارجعوا بكرة والمحكمة مفتوحة.",
+        refused: "القاضي رفض النظر في هالقضية. عدّلوا الكلام وجرّبوا.",
+        invalid_json: "الصك طلع ناقص. جرّبوا رفعها مرة ثانية."
+      };
+      state.error = code in copy ? copy[code] : "صار خلل في الاتصال بالقاضي. جرّبوا مرة ثانية.";
+      go(prevStage === "verdict" ? "verdict" : "choice");
+    } finally {
+      clearInterval(phraseTimer);
+      ctl = null;
+    }
+  }
+
+  /* ---------- router ---------- */
+  function go(stage){ state.stage = stage; render(); }
+
+  function render(){
+    renderScene();
+    const p = $("panel");
+    p.replaceChildren();
+    let nodes;
+    switch (state.stage){
+      case "setup": nodes = stageSetup(); break;
+      case "handoff_claim": nodes = handoff("p","claim","المدّعون يكتبون لائحة الدعوى: وش صار بالضبط، ووش يطلبون من القاضي."); break;
+      case "claim": nodes = writeStage("p","لائحة الدعوى","وش صار؟","اشرحوا القصة من أولها: وش الاتفاق، ووش اللي صار، ووش تطلبون من المحكمة.","مثال: اتفقنا قبل الكشتة إن ريان يجيب دبة الموية، وقال أبشروا. وصلنا البر وطلع ما جابها، وقعدنا بلا شاهي إلى المغرب. نطالب…","handoff_defense"); break;
+      case "handoff_defense": nodes = handoff("d","defense","المدّعى عليه يقرأ الدعوى ويكتب ردّه ودفاعه."); break;
+      case "defense": nodes = writeStage("d","الرد على الدعوى","ردّك على الدعوى","اقرأ وش قالوا عنك، وردّ بحجتك. عندك عذر؟ عندك شاهد؟ قله للقاضي.","مثال: أنا قلت بجيبها لو مريت المحطة، وهم غيّروا الطريق…","choice"); break;
+      case "choice": nodes = stageChoice(); break;
+      case "handoff_rebut": nodes = handoff("p","rebut_p","تعقيب المدّعين على رد المدّعى عليه."); break;
+      case "rebut_p": nodes = writeStage("p","تعقيب المدّعين","تعقيبكم على الرد","ردّوا على دفاعه باختصار.","…","handoff_rebut_d"); break;
+      case "handoff_rebut_d": nodes = handoff("d","rebut_d","الكلمة الأخيرة للمدّعى عليه قبل الحكم."); break;
+      case "rebut_d": nodes = writeStage("d","الكلمة الأخيرة","كلمتك الأخيرة","آخر فرصة تقنع القاضي.","…","choice"); break;
+      case "deliberating": nodes = stageDeliberating(); break;
+      case "interjecting": nodes = stageInterjecting(); break;
+      case "answer": nodes = state.q ? stageAnswer() : stageChoice(); break;
+      case "verdict": nodes = stageVerdict(); break;
+    }
+    p.append(...[].concat(nodes).filter(Boolean));
+    const ta = $("speech"); if (ta && !ta.hidden) ta.focus({preventScroll:true});
+  }
+
+  render();
+})();
+</script>
+<script>
+if ("serviceWorker" in navigator) window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(()=>{}));
+</script>
+</body>
+</html>

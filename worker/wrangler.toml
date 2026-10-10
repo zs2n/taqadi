@@ -1,0 +1,15 @@
+name = "taqadi-judge"
+main = "worker.js"
+compatibility_date = "2025-06-01"
+
+# مخزن الحد اليومي والبلاغات.
+# شغّل: npx wrangler kv namespace create RL
+# وانسخ الـ id اللي يطلع لك هنا مكان PASTE_KV_ID
+[[kv_namespaces]]
+binding = "RL"
+id = "PASTE_KV_ID"
+
+# الأسرار ما تنكتب هنا. تنضاف بالأوامر:
+#   npx wrangler secret put ANTHROPIC_API_KEY
+#   npx wrangler secret put SALT        (أي كلمة عشوائية طويلة)
+#   npx wrangler secret put ADMIN_KEY   (كلمة سر لقراءة البلاغات)
